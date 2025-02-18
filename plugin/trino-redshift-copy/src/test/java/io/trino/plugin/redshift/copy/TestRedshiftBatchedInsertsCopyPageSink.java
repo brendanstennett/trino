@@ -159,7 +159,11 @@ final class TestRedshiftBatchedInsertsCopyPageSink
                             CAST('true' AS BOOLEAN) AS boolean_column,
                             CAST(1234567890123456789 AS BIGINT) AS bigint_column,
                             CAST('A' AS CHAR(1)) AS char_column,
-                            CAST(CAST(CAST(0xCAFEBABE AS BIGINT) AS VARCHAR) AS VARBINARY) AS varbinary_column
+                            CAST(CAST(CAST(0xCAFEBABE AS BIGINT) AS VARCHAR) AS VARBINARY) AS varbinary_column,
+                            CAST('' AS VARCHAR) as empty_column,
+                            CAST(NULL AS VARCHAR) as null_column,
+                            CAST('あたい' AS VARCHAR) AS special_char0,
+                            CAST('a\\backslash' AS VARCHAR) AS special_char1
         """, TEST_CATALOG, TEST_SCHEMA, tableName));
         assertQueryStats(
                 getSession(),
@@ -177,7 +181,11 @@ final class TestRedshiftBatchedInsertsCopyPageSink
                             "boolean_column",
                             "bigint_column",
                             "char_column",
-                            "varbinary_column"));
+                            "varbinary_column",
+                            "empty_column",
+                            "null_column",
+                            "special_char0",
+                            "special_char1"));
                     List<MaterializedRow> rows = results.getMaterializedRows();
                     assertThat(rows.getFirst().getField(0)).isEqualTo("Sample Text");
                     assertThat(rows.getFirst().getField(1)).isEqualTo(123);
@@ -189,6 +197,10 @@ final class TestRedshiftBatchedInsertsCopyPageSink
                     assertThat(rows.getFirst().getField(7)).isEqualTo(1234567890123456789L);
                     assertThat(rows.getFirst().getField(8)).isEqualTo("A");
                     assertThat(Long.toHexString(Long.parseLong(new String((byte[]) rows.getFirst().getField(9), StandardCharsets.UTF_8))).toUpperCase()).isEqualTo("CAFEBABE");
+                    assertThat(rows.getFirst().getField(10)).isEqualTo("");
+                    assertThat(rows.getFirst().getField(11)).isNull();
+                    assertThat(rows.getFirst().getField(12)).isEqualTo("あたい");
+                    assertThat(rows.getFirst().getField(13)).isEqualTo("a\\backslash");
                 });
     }
 
