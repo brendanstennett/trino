@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -191,8 +192,7 @@ final class TestRedshiftBatchedInsertsCopyPageSink
                 format("SELECT * FROM %s.%s.%s", TEST_CATALOG, TEST_SCHEMA, tableName),
                 queryStats -> {},
                 results -> {
-                    assertThat(results.getRowCount()).isEqualTo(1);
-                    assertThat(results.getColumnNames()).isEqualTo(List.of(
+                    List<String> cols = List.of(
                             "varchar_column",
                             "int_column",
                             "double_column",
@@ -206,23 +206,38 @@ final class TestRedshiftBatchedInsertsCopyPageSink
                             "empty_column",
                             "null_column",
                             "special_char0",
-                            "special_char1"));
+                            "special_char1");
+
+                    assertThat(results.getRowCount()).isEqualTo(1);
+                    assertThat(results.getColumnNames()).isEqualTo(cols);
+
                     List<MaterializedRow> rows = results.getMaterializedRows();
-                    assertThat(rows.getFirst().getField(0)).isEqualTo("Sample Text");
-                    assertThat(rows.getFirst().getField(1)).isEqualTo(123);
-                    assertThat(rows.getFirst().getField(2)).isEqualTo(123.45);
-                    assertThat(rows.getFirst().getField(3)).isEqualTo(BigDecimal.valueOf(123.45));
-                    assertThat(rows.getFirst().getField(4)).isEqualTo(LocalDate.of(2025, 2, 16));
-                    assertThat(rows.getFirst().getField(5)).isEqualTo(LocalDateTime.of(2025, 2, 16, 10, 30));
-                    assertThat(rows.getFirst().getField(6)).isEqualTo(true);
-                    assertThat(rows.getFirst().getField(7)).isEqualTo(1234567890123456789L);
-                    assertThat(rows.getFirst().getField(8)).isEqualTo("A");
-                    assertThat(Long.toHexString(Long.parseLong(new String((byte[]) rows.getFirst().getField(9), StandardCharsets.UTF_8))).toUpperCase()).isEqualTo("CAFEBABE");
-                    assertThat(rows.getFirst().getField(10)).isEqualTo("");
-                    assertThat(rows.getFirst().getField(11)).isNull();
-                    assertThat(rows.getFirst().getField(12)).isEqualTo("あたい");
-                    assertThat(rows.getFirst().getField(13)).isEqualTo("a\\backslash");
+                    Map<String, Object> fields = fieldsForRow(cols, rows.getFirst());
+                    assertThat(fields.get("varchar_column")).isEqualTo("Sample Text");
+                    assertThat(fields.get("int_column")).isEqualTo(123);
+                    assertThat(fields.get("double_column")).isEqualTo(123.45);
+                    assertThat(fields.get("decimal_column")).isEqualTo(BigDecimal.valueOf(123.45));
+                    assertThat(fields.get("date_column")).isEqualTo(LocalDate.of(2025, 2, 16));
+                    assertThat(fields.get("timestamp_column")).isEqualTo(LocalDateTime.of(2025, 2, 16, 10, 30));
+                    assertThat(fields.get("boolean_column")).isEqualTo(true);
+                    assertThat(fields.get("bigint_column")).isEqualTo(1234567890123456789L);
+                    assertThat(fields.get("char_column")).isEqualTo("A");
+                    assertThat(Long.toHexString(Long.parseLong(new String((byte[]) fields.get("varbinary_column"), StandardCharsets.UTF_8))).toUpperCase()).isEqualTo("CAFEBABE");
+                    assertThat(fields.get("empty_column")).isEqualTo("");
+                    assertThat(fields.get("null_column")).isNull();
+                    assertThat(fields.get("special_char0")).isEqualTo("あたい");
+                    assertThat(fields.get("special_char1")).isEqualTo("a\\backslash");
                 });
+    }
+
+    Map<String, Object> fieldsForRow(List<String> cols, MaterializedRow row)
+    {
+        Map<String, Object> fields = new HashMap<>(row.getFieldCount());
+        for (int i = 0; i < row.getFieldCount(); i++) {
+            fields.put(cols.get(i), row.getField(i));
+        }
+
+        return fields;
     }
 
     String getTableName()
