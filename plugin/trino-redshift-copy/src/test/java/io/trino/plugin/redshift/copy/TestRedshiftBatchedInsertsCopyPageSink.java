@@ -111,6 +111,27 @@ final class TestRedshiftBatchedInsertsCopyPageSink
     }
 
     @Test
+    void testInsertIntoPageSink()
+    {
+        String tableName = getTableName();
+        assertQueryStats(
+                getSession(),
+                format("CREATE TABLE %s.%s.%s AS SELECT * FROM tpch.sf1.lineitem LIMIT 10", TEST_CATALOG, TEST_SCHEMA, tableName),
+                queryStats -> {},
+                results -> assertThat(results.getRowCount()).isEqualTo(1));
+        assertQueryStats(
+                getSession(),
+                format("INSERT INTO %s.%s.%s SELECT * FROM tpch.sf1.lineitem LIMIT 10", TEST_CATALOG, TEST_SCHEMA, tableName),
+                queryStats -> {},
+                results -> assertThat(results.getRowCount()).isEqualTo(1));
+        assertQueryStats(
+                getSession(),
+                format("SELECT * FROM %s.%s.%s", TEST_CATALOG, TEST_SCHEMA, tableName),
+                queryStats -> {},
+                results -> assertThat(results.getRowCount()).isEqualTo(20));
+    }
+
+    @Test
     void testQueryWithNoResults()
     {
         String tableName = getTableName();
